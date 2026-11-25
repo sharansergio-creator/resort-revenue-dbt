@@ -1,0 +1,14 @@
+channel_name,channel_group,base_commission_pct,gst_on_commission_pct,tcs_tds_pct,effective_distribution_cost_pct
+MAKEMYTRIP,OTA,0.18,0.18,0.01,0.2224
+GOIBIBO,OTA,0.18,0.18,0.01,0.2224
+AGODA,OTA,0.15,0.18,0.01,0.187
+CLEARTRIP,OTA,0.16,0.18,0.01,0.1988
+EXPEDIA,OTA,0.15,0.18,0.01,0.187
+HOTELS.COM,OTA,0.15,0.18,0.01,0.187
+ORBITZ,OTA,0.15,0.18,0.01,0.187
+GOOGLE HOTEL AD,OTA,0.12,0.18,0.0,0.1416
+WHATSAPP,Direct,0.0,0.0,0.0,0.0
+WALK-IN,Direct,0.0,0.0,0.0,0.0
+PHONE CALL,Direct,0.0,0.0,0.0,0.0
+EMAIL,Direct,0.0,0.0,0.0,0.0
+SOCIAL MEDIA,Direct,0.0,0.0,0.0,0.0

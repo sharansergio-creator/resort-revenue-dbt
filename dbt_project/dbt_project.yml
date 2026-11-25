@@ -1,0 +1,21 @@
+﻿name: 'resort_revenue_dbt'
+version: '1.0.0'
+config-version: 2
+
+profile: 'resort_revenue_dbt'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+models:
+  resort_revenue_dbt:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table

@@ -1,0 +1,9 @@
+﻿version: 2
+
+sources:
+  - name: stayflexi_raw
+    schema: raw
+    tables:
+      - name: master_bookings
+      - name: room_revenue
+      - name: daily_inventory

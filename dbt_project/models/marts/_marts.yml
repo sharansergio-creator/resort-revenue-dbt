@@ -1,0 +1,34 @@
+﻿version: 2
+
+models:
+  - name: dim_date
+    columns:
+      - name: stay_date
+        tests: [unique, not_null]
+  - name: dim_channel
+    columns:
+      - name: channel_name
+        tests: [unique, not_null]
+  - name: dim_room_type
+    columns:
+      - name: room_type
+        tests: [unique, not_null]
+  - name: fct_daily_property_kpi
+    columns:
+      - name: stay_date
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: stay_date
+  - name: fct_booking_lifecycle
+    columns:
+      - name: room_booking_key
+        tests: [unique, not_null]
+      - name: booking_status_group
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['REALIZED', 'FUTURE_OTB', 'CANCELLED', 'OTHER']

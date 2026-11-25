@@ -1,0 +1,35 @@
+{
+  "name": "Coorg Luxury Resort",
+  "dataColors": [
+    "#1B4332",
+    "#D4A373",
+    "#2D6A4F",
+    "#E07A5F",
+    "#40916C",
+    "#8D99AE",
+    "#52B788",
+    "#BC6C25"
+  ],
+  "background": "#F4F6F4",
+  "foreground": "#1B2620",
+  "tableAccent": "#1B4332",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "color": { "solid": { "color": "#FFFFFF" } },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": true,
+            "color": { "solid": { "color": "#E2E8E4" } },
+            "radius": 8
+          }
+        ]
+      }
+    }
+  }
+}

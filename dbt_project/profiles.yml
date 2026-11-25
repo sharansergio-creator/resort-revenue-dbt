@@ -1,0 +1,7 @@
+﻿resort_revenue_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: '../data/processed_private/resort_private.duckdb'
+      threads: 4

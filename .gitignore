@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Private resort files & local DuckDB databases (NEVER commit)
+data/raw_private/
+data/processed_private/
+*.duckdb
+*.duckdb.wal
+*.xlsx
+*.xls
+
+# dbt artifacts
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+.user.yml
+dbt_project/.user.yml
+
+# Secrets & OS files
+.env
+__pycache__/
+.DS_Store
