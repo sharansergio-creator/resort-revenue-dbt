@@ -118,7 +118,7 @@ Explores room-type occupancy distribution, booking lead times (0–3 days vs. 31
 
 2. **Ingest & Transform Data with dbt (Default As-Of Date: `2026-11-22`):**
    ```bash
-   cd dbt_project && dbt build
+   dbt build --project-dir dbt_project
    ```
 
 3. **Audit & Export Public Portfolio Marts:**
@@ -130,7 +130,7 @@ Explores room-type occupancy distribution, booking lead times (0–3 days vs. 31
 4. **Running with a Custom Cutoff Date (Paired CLI Workflow):**
    When testing or backtesting against a non-default as-of date (e.g., `2026-11-15`), pass matching parameters to both `dbt build` and the Python export script:
    ```bash
-   cd dbt_project && dbt build --vars '{"as_of_date": "2026-11-15"}'
+   dbt build --project-dir dbt_project --vars '{"as_of_date": "2026-11-15"}'
    python src/02_audit_and_export.py --as-of-date 2026-11-15
    ```
 
@@ -143,7 +143,7 @@ Explores room-type occupancy distribution, booking lead times (0–3 days vs. 31
 ## Methodology & Data Governance Disclosures
 
 1. **Commercial Data Privacy & Synthetic Scaling**: To protect resort trade secrets and commercial confidentiality, raw booking monetary totals are multiplied by an audit scaling factor (`1.137`), and room types are mapped to standard industry labels (`Deluxe Room` → `Standard Room`, `Superior Cottages` → `Garden Cottage`, `Mourya Heritage House` → `Heritage Suite`, `Private Pool Villa` → `Pool Villa`) during export via `src/02_audit_and_export.py`. All percentage ratios, occupancy rates, net yields, tax structures, and cancellation rates remain mathematically exact.
-2. **Configurable As-Of Date (`var('as_of_date')`) & Paired CLI**: The staging layer enforces `cast('{{ var("as_of_date") }}' as date)` (default: `'2026-11-22'`) in `dbt_project/dbt_project.yml` and CLI arguments in `src/02_audit_and_export.py` to cleanly partition historical realized stays from the forward on-the-books (`FUTURE_OTB`) pipeline. For non-default dates, running `dbt build --vars '{"as_of_date": "<DATE>"}'` must be paired with `python src/02_audit_and_export.py --as-of-date <DATE>` to ensure seamless synchronization.
+2. **Configurable As-Of Date (`var('as_of_date')`) & Paired CLI**: The staging layer enforces `cast('{{ var("as_of_date") }}' as date)` (default: `'2026-11-22'`) in `dbt_project/dbt_project.yml` and CLI arguments in `src/02_audit_and_export.py` to cleanly partition historical realized stays from the forward on-the-books (`FUTURE_OTB`) pipeline. For non-default dates, running `dbt build --project-dir dbt_project --vars '{"as_of_date": "<DATE>"}'` must be paired with `python src/02_audit_and_export.py --as-of-date <DATE>` to ensure seamless synchronization.
 3. **Unique Reservation Grain Alignment**: `fct_booking_lifecycle` is aggregated strictly at the unique reservation grain (`booking_key` primary key, `1,995` rows), ensuring that reservation volume counts and cancellation percentages share an identical grain without room-explosion distortion.
 4. **Status Governance**: Unconfirmed holds (`ON_HOLD`) are strictly segregated from `REALIZED` stays and classified under `'OTHER'`, preventing uncollected revenue or pending inquiries from artificially inflating realized occupancy.
 5. **Multi-Room Revenue Allocation & Rounding Tolerance**: Reservations with `no_of_rooms > 1` (12.4% of bookings) distribute booking-level totals equally across individual room nights, with residual fractional paise allocated to `room_seq = 1`. Across all three star-schema marts, revenue and distribution figures match identically at the rupee level with a `< ₹0.10` paise rounding tolerance due to differing aggregation levels.
