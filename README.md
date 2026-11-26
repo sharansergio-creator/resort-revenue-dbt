@@ -43,15 +43,16 @@ Raw PMS & OTA Exports ─▶ Staging (stg_*) ─▶ Star Schema Marts (dbt + Duc
 
 The pipeline enforces rigorous data integrity with **15 dbt tests** (schema tests, referential integrity, accepted values, and singular assertions):
 * **PMS Occupancy Reconciliation (`assert_pms_occupancy_reconciliation.sql`)**: Asserts that dbt `realized_occupied_nights` reconciles within **`0.5%`** of PMS `pms_sold_rooms` across all historical stay dates (`stay_date <= var('as_of_date')`). Across 387 audited days, dbt achieves a **`0.068%` variance** (2,933 dbt realized nights vs. 2,931 PMS sold nights—a difference of only 2 nights).
-* **Cross-Mart Alignment**:
-  * **Realized Room Nights**: Exactly **`2,933`** in `fct_daily_property_kpi`, `fct_daily_room_performance`, and `fct_channel_economics`.
-  * **Gross Room Revenue**: Exactly **`₹2,42,07,965`** across all three marts.
-  * **Estimated Distribution Drag**: Exactly **`₹16,70,142`** across all three marts.
-  * **Historical Cancelled Revenue Lost**: Exactly **`₹37,20,078`** across all three marts.
+* **Cross-Mart Alignment & Tolerance-Based Reconciliation**:
+  All three star-schema marts (`fct_daily_property_kpi`, `fct_daily_room_performance`, `fct_channel_economics`) reconcile exactly to the nearest whole rupee across the historical period (`stay_date <= 2026-11-22`), with small sub-10 paise floating-point differences (`< ₹0.10`) attributable to differing aggregation levels (property-daily vs. room-type-daily vs. channel-monthly):
+  * **Realized Room Nights**: Exactly **`2,933`** across all three marts (zero drift).
+  * **Gross Room Revenue**: **`₹2,42,07,965`** across all three marts (Max delta: `₹0.05` — `₹2,42,07,965.26` vs. `₹2,42,07,965.21` vs. `₹2,42,07,965.23`).
+  * **Estimated Distribution Cost**: **`₹16,70,142`** across all three marts (Max delta: `₹0.03` — `₹16,70,142.08` vs. `₹16,70,142.08` vs. `₹16,70,142.05`).
+  * **Historical Pre-Rebooking Cancelled Booking Value**: **`₹37,20,078`** across all three marts (Max delta: `₹0.07` — `₹37,20,077.98` vs. `₹37,20,078.01` vs. `₹37,20,077.94`).
 * **Stay Date vs. Check-in Date Cancellation Bridge**:
-  * **Historical Night-Level Loss (`stay_date <= 2026-11-22`)**: **`₹37,20,078`** (387 cancellations with historical check-in dates).
+  * **Historical Pre-Rebooking Cancelled Booking Value (`stay_date <= 2026-11-22`)**: **`₹37,20,078`** (387 cancellations with historical check-in dates).
   * **Future OTB Cancellations (`check_in_date > 2026-11-22`)**: **`₹3,03,003`** (18 cancellations scheduled for Dec 2026).
-  * **All-Time Contracted Cancellation Value**: **`₹40,23,081` (`₹4.02M`)** across all 405 cancellations in `fct_booking_lifecycle`.
+  * **All-Time Pre-Rebooking Cancelled Booking Value**: **`₹40,23,081` (`₹4.02M`)** across all 405 cancellations in `fct_booking_lifecycle`.
 
 ---
 
@@ -73,8 +74,8 @@ Computed directly from the public portfolio semantic model (`data/public_portfol
 | **Direct Channel Net Yield** | **`100.0%`** | Zero distribution drag (`₹0` commission) |
 | **OTA Blended Net Yield** | **`79.04%`** | Range: `77.8%` (Goibibo/MMT) to `81.3%` (Agoda/Expedia) |
 | **Estimated Distribution Drag** | **`₹16,70,142`** | Total OTA commissions, TDS, and GST |
-| **Cancelled Revenue Lost (Historical)** | **`₹37,20,078`** | Scheduled room nights on or before `2026-11-22` |
-| **Cancelled Booking Value (All-Time)** | **`₹40,23,081` (`₹4.02M`)** | Total contract value across 405 cancellations |
+| **Pre-Rebooking Cancelled Booking Value (Historical)** | **`₹37,20,078`** | Scheduled room nights on or before `2026-11-22` |
+| **Pre-Rebooking Cancelled Booking Value (All-Time)** | **`₹40,23,081` (`₹4.02M`)** | Total contract value across 405 cancellations |
 | **Cancellation Rate (Decided)** | **`20.98%`** | 405 cancelled / (1,525 realized + 405 cancelled reservations) |
 | **Cancellation Rate (Total Volume)** | **`20.30%`** | 405 cancelled / 1,995 total unique reservations |
 | **Average Lead Time / Length of Stay** | **`15.8 days` / `1.65 nights`** | Unique reservation grain across 1,995 bookings |
@@ -89,7 +90,7 @@ Tracks high-level property health: Occupancy Rate, Gross vs. Net ADR, RevPAR, an
 ![Executive Overview](assets/page1_executive_overview.png)
 
 ### Page 2: Channel Economics & OTA Net Yield
-Analyzes channel contribution, distribution cost drag (commissions + taxes), net yield efficiency, and revenue leakage from cancellations.
+Analyzes channel contribution, distribution cost drag (commissions + taxes), net yield efficiency, and pre-rebooking booking value leakage from cancellations.
 ![Channel Economics](assets/page2_channel_economics.png)
 
 ### Page 3: Room Category Performance & Lead Time Elasticity
@@ -115,7 +116,7 @@ Explores room-type occupancy distribution, booking lead times (0–3 days vs. 31
    pip install -r requirements.txt
    ```
 
-2. **Ingest & Transform Data with dbt:**
+2. **Ingest & Transform Data with dbt (Default As-Of Date: `2026-11-22`):**
    ```bash
    cd dbt_project && dbt build
    ```
@@ -123,9 +124,17 @@ Explores room-type occupancy distribution, booking lead times (0–3 days vs. 31
 3. **Audit & Export Public Portfolio Marts:**
    ```bash
    python src/02_audit_and_export.py --as-of-date 2026-11-22
+   # Or simply: python src/02_audit_and_export.py (defaults to 2026-11-22)
    ```
 
-4. **Launch the Power BI Dashboard:**
+4. **Running with a Custom Cutoff Date (Paired CLI Workflow):**
+   When testing or backtesting against a non-default as-of date (e.g., `2026-11-15`), pass matching parameters to both `dbt build` and the Python export script:
+   ```bash
+   cd dbt_project && dbt build --vars '{"as_of_date": "2026-11-15"}'
+   python src/02_audit_and_export.py --as-of-date 2026-11-15
+   ```
+
+5. **Launch the Power BI Dashboard:**
    * Open `powerbi/resort_revenue_dashboard.pbix` in Power BI Desktop.
    * Refresh data to load the latest DuckDB/CSV mart exports.
 
@@ -133,8 +142,9 @@ Explores room-type occupancy distribution, booking lead times (0–3 days vs. 31
 
 ## Methodology & Data Governance Disclosures
 
-1. **Commercial Data Privacy & Synthetic Scaling**: To protect resort trade secrets and commercial confidentiality, raw booking monetary totals are multiplied by an audit scaling factor (`1.137`), and room types are mapped to standard industry labels (`Deluxe Room` ➔ `Standard Room`, `Superior Cottages` ➔ `Garden Cottage`, `Mourya Heritage House` ➔ `Heritage Suite`, `Private Pool Villa` ➔ `Pool Villa`) during export via `src/02_audit_and_export.py`. All percentage ratios, occupancy rates, net yields, tax structures, and cancellation rates remain mathematically exact.
-2. **Configurable As-Of Date (`var('as_of_date')`)**: The staging layer enforces `cast('{{ var("as_of_date") }}' as date)` (default: `'2026-11-22'`) in `dbt_project/dbt_project.yml` and CLI arguments in `src/02_audit_and_export.py` to cleanly partition historical realized stays from the forward on-the-books (`FUTURE_OTB`) pipeline.
+1. **Commercial Data Privacy & Synthetic Scaling**: To protect resort trade secrets and commercial confidentiality, raw booking monetary totals are multiplied by an audit scaling factor (`1.137`), and room types are mapped to standard industry labels (`Deluxe Room` → `Standard Room`, `Superior Cottages` → `Garden Cottage`, `Mourya Heritage House` → `Heritage Suite`, `Private Pool Villa` → `Pool Villa`) during export via `src/02_audit_and_export.py`. All percentage ratios, occupancy rates, net yields, tax structures, and cancellation rates remain mathematically exact.
+2. **Configurable As-Of Date (`var('as_of_date')`) & Paired CLI**: The staging layer enforces `cast('{{ var("as_of_date") }}' as date)` (default: `'2026-11-22'`) in `dbt_project/dbt_project.yml` and CLI arguments in `src/02_audit_and_export.py` to cleanly partition historical realized stays from the forward on-the-books (`FUTURE_OTB`) pipeline. For non-default dates, running `dbt build --vars '{"as_of_date": "<DATE>"}'` must be paired with `python src/02_audit_and_export.py --as-of-date <DATE>` to ensure seamless synchronization.
 3. **Unique Reservation Grain Alignment**: `fct_booking_lifecycle` is aggregated strictly at the unique reservation grain (`booking_key` primary key, `1,995` rows), ensuring that reservation volume counts and cancellation percentages share an identical grain without room-explosion distortion.
 4. **Status Governance**: Unconfirmed holds (`ON_HOLD`) are strictly segregated from `REALIZED` stays and classified under `'OTHER'`, preventing uncollected revenue or pending inquiries from artificially inflating realized occupancy.
-5. **Multi-Room Revenue Allocation**: Reservations with `no_of_rooms > 1` (12.4% of bookings) distribute booking-level totals equally across individual room nights, with residual fractional paise allocated to `room_seq = 1` to ensure zero rounding drift.
+5. **Multi-Room Revenue Allocation & Rounding Tolerance**: Reservations with `no_of_rooms > 1` (12.4% of bookings) distribute booking-level totals equally across individual room nights, with residual fractional paise allocated to `room_seq = 1`. Across all three star-schema marts, revenue and distribution figures match identically at the rupee level with a `< ₹0.10` paise rounding tolerance due to differing aggregation levels.
+6. **Pre-Rebooking Cancellation Terminology**: Cancelled booking amounts represent pre-rebooking contract value and do not imply permanent, unrecoverable revenue loss, as raw PMS logs do not track whether cancelled inventory slots were subsequently resold or reallocated.
