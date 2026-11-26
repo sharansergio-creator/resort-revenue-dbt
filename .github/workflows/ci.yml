@@ -9,6 +9,10 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+      DBT_PROFILES_DIR: dbt_project
+      DBT_DUCKDB_PATH: data/processed_private/resort_demo.duckdb
 
     steps:
       - name: Check out repository
@@ -27,7 +31,7 @@ jobs:
 
       - name: Run Python unit tests
         run: |
-          pytest tests_python/
+          python -m pytest tests_python/
 
       - name: Generate synthetic demo dataset
         run: |
@@ -35,15 +39,12 @@ jobs:
 
       - name: Ingest and anonymize synthetic PMS dataset
         run: |
-          python src/01_ingest_and_anonymize.py --input-dir data/demo_sample --output-db data/processed_private/resort_private.duckdb
+          python src/01_ingest_and_anonymize.py --demo --output-db data/processed_private/resort_demo.duckdb
 
       - name: Run dbt build & data tests against demo dataset
-        env:
-          DBT_PROFILES_DIR: dbt_project
-          DBT_DUCKDB_PATH: data/processed_private/resort_private.duckdb
         run: |
           dbt build --project-dir dbt_project --profiles-dir dbt_project
 
       - name: Verify end-to-end audit and portfolio export
         run: |
-          python src/02_audit_and_export.py
+          python src/02_audit_and_export.py --db-path data/processed_private/resort_demo.duckdb

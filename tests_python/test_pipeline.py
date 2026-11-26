@@ -1,10 +1,17 @@
 import datetime
 import importlib
+import os
 import pathlib
+import sys
 import pytest
 import pandas as pd
 import numpy as np
 import duckdb
+
+# Ensure repository root is on sys.path regardless of execution environment
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 ingest_mod = importlib.import_module("src.01_ingest_and_anonymize")
 parse_stayflexi_date = ingest_mod.parse_stayflexi_date

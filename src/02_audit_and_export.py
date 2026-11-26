@@ -1,10 +1,12 @@
 ﻿import argparse
+import os
 import pathlib
 import duckdb
 import pandas as pd
 
 DEFAULT_AS_OF_DATE = "2026-11-22"
-DB_PATH = pathlib.Path("data/processed_private/resort_private.duckdb")
+DEFAULT_DB_PATH = pathlib.Path("data/processed_private/resort_private.duckdb")
+DEMO_DB_PATH = pathlib.Path("data/processed_private/resort_demo.duckdb")
 PUB_DIR = pathlib.Path("data/public_portfolio")
 PUB_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -17,8 +19,24 @@ ROOM_MAP = {
     "Private Pool Villa": "Pool Villa",
 }
 
-def main(as_of_date: str = DEFAULT_AS_OF_DATE) -> None:
-    con = duckdb.connect(str(DB_PATH), read_only=True)
+
+def resolve_db_path(db_arg: pathlib.Path = None) -> pathlib.Path:
+    if db_arg is not None:
+        return db_arg
+    env_db = os.environ.get("DBT_DUCKDB_PATH")
+    if env_db:
+        return pathlib.Path(env_db)
+    if DEFAULT_DB_PATH.exists():
+        return DEFAULT_DB_PATH
+    if DEMO_DB_PATH.exists():
+        return DEMO_DB_PATH
+    return DEFAULT_DB_PATH
+
+
+def main(as_of_date: str = DEFAULT_AS_OF_DATE, db_path: pathlib.Path = None) -> None:
+    target_db = resolve_db_path(db_path)
+    print(f"Connecting to DuckDB database: {target_db}")
+    con = duckdb.connect(str(target_db), read_only=True)
 
     print("=================================================================")
     print(f"1. PMS vs. DBT OCCUPANCY RECONCILIATION (2025-11-01 to {as_of_date})")
@@ -141,5 +159,11 @@ if __name__ == "__main__":
         default=DEFAULT_AS_OF_DATE,
         help=f"Historical audit cutoff date (YYYY-MM-DD), default: {DEFAULT_AS_OF_DATE}"
     )
+    parser.add_argument(
+        "--db-path",
+        type=pathlib.Path,
+        default=None,
+        help="Path to DuckDB database file (defaults to DBT_DUCKDB_PATH or resort_private.duckdb / resort_demo.duckdb)",
+    )
     args = parser.parse_args()
-    main(as_of_date=args.as_of_date)
+    main(as_of_date=args.as_of_date, db_path=args.db_path)

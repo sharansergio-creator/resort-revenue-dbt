@@ -1,4 +1,5 @@
 ﻿import argparse
+import os
 import pathlib
 import sys
 
@@ -191,11 +192,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    env_db = os.environ.get("DBT_DUCKDB_PATH")
     if args.demo:
         input_dir = args.input_dir or DEMO_DIR
         if not (input_dir / MASTER_FILE_NAME).exists():
             generate_demo_dataset(input_dir)
-        output_db = args.output_db or (DEFAULT_OUT_DIR / "resort_demo.duckdb")
+        if args.output_db:
+            output_db = args.output_db
+        elif env_db:
+            output_db = pathlib.Path(env_db)
+        else:
+            output_db = DEFAULT_OUT_DIR / "resort_demo.duckdb"
     else:
         if args.input_dir:
             input_dir = args.input_dir
@@ -205,7 +212,12 @@ def main() -> None:
             input_dir = DEMO_DIR
             if not (input_dir / MASTER_FILE_NAME).exists():
                 generate_demo_dataset(input_dir)
-        output_db = args.output_db or DEFAULT_DB_PATH
+        if args.output_db:
+            output_db = args.output_db
+        elif env_db:
+            output_db = pathlib.Path(env_db)
+        else:
+            output_db = DEFAULT_DB_PATH
 
     run_pipeline(input_dir=input_dir, db_path=output_db)
 
