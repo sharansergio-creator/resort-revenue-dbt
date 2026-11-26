@@ -1,4 +1,4 @@
-﻿name: 'resort_revenue_dbt'
+name: 'resort_revenue_dbt'
 version: '1.0.0'
 config-version: 2
 
@@ -7,6 +7,9 @@ profile: 'resort_revenue_dbt'
 model-paths: ["models"]
 seed-paths: ["seeds"]
 test-paths: ["tests"]
+
+vars:
+  as_of_date: '2026-11-22'
 
 models:
   resort_revenue_dbt:

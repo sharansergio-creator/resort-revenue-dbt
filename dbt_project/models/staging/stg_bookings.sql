@@ -21,8 +21,8 @@ joined as (
         case
             when upper(trim(m.booking_status)) = 'CANCELLED' then 'CANCELLED'
             when upper(trim(m.booking_status)) in ('CHECKED OUT', 'CHECKED IN') then 'REALIZED'
-            when upper(trim(m.booking_status)) in ('CONFIRMED', 'ON_HOLD') and cast(m.check_in_date as date) <= date '2026-11-22' then 'REALIZED'
-            when upper(trim(m.booking_status)) in ('CONFIRMED', 'ON_HOLD') then 'FUTURE_OTB'
+            when upper(trim(m.booking_status)) = 'CONFIRMED' and cast(m.check_in_date as date) <= cast('{{ var("as_of_date") }}' as date) then 'REALIZED'
+            when upper(trim(m.booking_status)) = 'CONFIRMED' then 'FUTURE_OTB'
             else 'OTHER'
         end as booking_status_group,
         coalesce(cast(m.adults as integer), 1) as adults,
