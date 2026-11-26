@@ -1,7 +1,9 @@
-﻿import pathlib
+﻿import argparse
+import pathlib
 import duckdb
 import pandas as pd
 
+DEFAULT_AS_OF_DATE = "2026-11-22"
 DB_PATH = pathlib.Path("data/processed_private/resort_private.duckdb")
 PUB_DIR = pathlib.Path("data/public_portfolio")
 PUB_DIR.mkdir(parents=True, exist_ok=True)
@@ -15,13 +17,13 @@ ROOM_MAP = {
     "Private Pool Villa": "Pool Villa",
 }
 
-def main() -> None:
+def main(as_of_date: str = DEFAULT_AS_OF_DATE) -> None:
     con = duckdb.connect(str(DB_PATH), read_only=True)
 
     print("=================================================================")
-    print("1. PMS vs. DBT OCCUPANCY RECONCILIATION (2025-11-01 to 2026-11-22)")
+    print(f"1. PMS vs. DBT OCCUPANCY RECONCILIATION (2025-11-01 to {as_of_date})")
     print("=================================================================")
-    rec = con.execute("""
+    rec = con.execute(f"""
         select
             count(*) as days_audited,
             sum(net_sellable_rooms) as total_sellable_room_nights,
@@ -29,14 +31,14 @@ def main() -> None:
             sum(realized_occupied_nights) as dbt_realized_room_nights,
             sum(realized_occupied_nights) - sum(pms_sold_rooms) as net_diff_nights
         from main_marts.fct_daily_property_kpi
-        where stay_date <= date '2026-11-22'
+        where stay_date <= date '{as_of_date}'
     """).df()
     print(rec.to_string(index=False))
 
     print("\n=================================================================")
-    print("2. HISTORICAL PROPERTY KPI SUMMARY (2025-11-01 to 2026-11-22)")
+    print(f"2. HISTORICAL PROPERTY KPI SUMMARY (2025-11-01 to {as_of_date})")
     print("=================================================================")
-    kpi = con.execute("""
+    kpi = con.execute(f"""
         select
             round(100.0 * sum(realized_occupied_nights) / nullif(sum(net_sellable_rooms), 0), 2) as occupancy_pct,
             round(sum(realized_room_revenue_pre_gst) / nullif(sum(realized_occupied_nights), 0), 0) as gross_adr_inr,
@@ -47,12 +49,12 @@ def main() -> None:
             round(sum(realized_distribution_cost), 0) as total_ota_drag_inr,
             round(sum(cancelled_room_revenue_lost), 0) as cancelled_rev_lost_inr
         from main_marts.fct_daily_property_kpi
-        where stay_date <= date '2026-11-22'
+        where stay_date <= date '{as_of_date}'
     """).df()
     print(kpi.to_string(index=False))
 
     print("\n=================================================================")
-    print("3. CHANNEL ECONOMICS & CANCELLATION LEAKAGE (HISTORICAL STAYS)")
+    print(f"3. CHANNEL ECONOMICS & CANCELLATION LEAKAGE (STAYS <= {as_of_date})")
     print("=================================================================")
     ch = con.execute("""
         select
@@ -65,16 +67,15 @@ def main() -> None:
             round(sum(distribution_cost_inr), 0) as ota_cost_inr,
             round(100.0 * sum(cancelled_room_bookings) / nullif(sum(realized_room_bookings + cancelled_room_bookings), 0), 1) as cancel_rate_pct
         from main_marts.fct_channel_economics
-        where stay_year_month <= '2026-11'
         group by 1, 2
         order by realized_nights desc
     """).df()
     print(ch.to_string(index=False))
 
     print("\n=================================================================")
-    print("4. WEEKDAY vs. WEEKEND PRICING & OCCUPANCY OPPORTUNITY")
+    print(f"4. WEEKDAY vs. WEEKEND PRICING & OCCUPANCY OPPORTUNITY (STAYS <= {as_of_date})")
     print("=================================================================")
-    wk = con.execute("""
+    wk = con.execute(f"""
         select
             d.day_type,
             count(*) as days,
@@ -83,7 +84,7 @@ def main() -> None:
             round(sum(k.realized_room_revenue_pre_gst) / nullif(sum(k.net_sellable_rooms), 0), 0) as gross_revpar
         from main_marts.fct_daily_property_kpi k
         join main_marts.dim_date d on k.stay_date = d.stay_date
-        where k.stay_date <= date '2026-11-22'
+        where k.stay_date <= date '{as_of_date}'
         group by 1
         order by 1
     """).df()
@@ -133,4 +134,11 @@ def main() -> None:
     print(f"\nExported 7 privacy-safe Power BI & GitHub mart tables to {PUB_DIR}/")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Audit and export public portfolio data.")
+    parser.add_argument(
+        "--as-of-date",
+        default=DEFAULT_AS_OF_DATE,
+        help=f"Historical audit cutoff date (YYYY-MM-DD), default: {DEFAULT_AS_OF_DATE}"
+    )
+    args = parser.parse_args()
+    main(as_of_date=args.as_of_date)

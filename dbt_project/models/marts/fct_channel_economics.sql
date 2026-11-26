@@ -1,12 +1,15 @@
 ﻿with nights as (
-    select * from {{ ref('int_booking_nights') }}
+    select n.* from {{ ref('int_booking_nights') }} n
+    inner join {{ ref('dim_date') }} d
+        on n.stay_date = d.stay_date
+    where n.stay_date <= cast('{{ var("as_of_date") }}' as date)
 )
 select
     strftime(stay_date, '%Y-%m') as stay_year_month,
     channel_name,
     channel_group,
-    count(distinct case when booking_status_group = 'REALIZED' then room_booking_key end) as realized_room_bookings,
-    count(distinct case when booking_status_group = 'CANCELLED' then room_booking_key end) as cancelled_room_bookings,
+    count(distinct case when booking_status_group = 'REALIZED' then booking_key end) as realized_room_bookings,
+    count(distinct case when booking_status_group = 'CANCELLED' then booking_key end) as cancelled_room_bookings,
     count(case when booking_status_group = 'REALIZED' then 1 end) as realized_room_nights,
     count(case when booking_status_group = 'FUTURE_OTB' then 1 end) as future_otb_room_nights,
     count(case when booking_status_group = 'CANCELLED' then 1 end) as cancelled_room_nights,
