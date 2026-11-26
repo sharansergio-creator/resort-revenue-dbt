@@ -3,5 +3,5 @@
   outputs:
     dev:
       type: duckdb
-      path: '../data/processed_private/resort_private.duckdb'
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'data/processed_private/resort_private.duckdb') }}"
       threads: 4

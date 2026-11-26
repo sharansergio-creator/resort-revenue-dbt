@@ -40,6 +40,9 @@ joined as (
     from master m
     left join rev r
         on m.booking_key = r.booking_key
+    where m.booking_key is not null
+      and coalesce(cast(m.no_of_rooms as integer), 0) > 0
+      and cast(m.check_out_date as date) > cast(m.check_in_date as date)
 ),
 exploded_rooms as (
     select

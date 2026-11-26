@@ -20,41 +20,55 @@ exploded as (
         *,
         unnest(generate_series(0, length_of_stay - 1)) as night_index
     from bookings
+),
+allocated as (
+    select
+        room_booking_key || '_' || strftime(check_in_date + cast(night_index as integer), '%Y%m%d') as booking_night_key,
+        room_booking_key,
+        booking_key,
+        room_seq,
+        night_index + 1 as night_number,
+        length_of_stay,
+        booking_date,
+        check_in_date,
+        check_out_date,
+        cast(check_in_date + cast(night_index as integer) as date) as stay_date,
+        lead_time_days,
+        lead_time_bucket,
+        channel_name,
+        channel_group,
+        raw_booking_status,
+        booking_status_group,
+        room_type,
+        rate_plan_clean,
+        base_commission_pct,
+        gst_on_commission_pct,
+        tcs_tds_pct,
+        effective_distribution_cost_pct,
+        -- Allocate room revenue evenly in paise with exact residual on final stay night
+        case
+            when night_index + 1 = length_of_stay
+                then round(room_revenue_pre_gst - round(room_revenue_pre_gst / length_of_stay, 2) * (length_of_stay - 1), 2)
+            else round(room_revenue_pre_gst / length_of_stay, 2)
+        end as night_room_revenue_pre_gst,
+        case
+            when night_index + 1 = length_of_stay
+                then round(services_revenue - round(services_revenue / length_of_stay, 2) * (length_of_stay - 1), 2)
+            else round(services_revenue / length_of_stay, 2)
+        end as night_services_revenue,
+        case
+            when night_index + 1 = length_of_stay
+                then round(room_taxes - round(room_taxes / length_of_stay, 2) * (length_of_stay - 1), 2)
+            else round(room_taxes / length_of_stay, 2)
+        end as night_room_taxes
+    from exploded
 )
 select
-    room_booking_key || '_' || strftime(check_in_date + cast(night_index as integer), '%Y%m%d') as booking_night_key,
-    room_booking_key,
-    booking_key,
-    room_seq,
-    night_index + 1 as night_number,
-    length_of_stay,
-    booking_date,
-    check_in_date,
-    check_out_date,
-    cast(check_in_date + cast(night_index as integer) as date) as stay_date,
-    lead_time_days,
-    lead_time_bucket,
-    channel_name,
-    channel_group,
-    raw_booking_status,
-    booking_status_group,
-    room_type,
-    rate_plan_clean,
-    effective_distribution_cost_pct,
-    -- Allocate room revenue evenly in paise with exact residual on final stay night
-    case
-        when night_index + 1 = length_of_stay
-            then round(room_revenue_pre_gst - round(room_revenue_pre_gst / length_of_stay, 2) * (length_of_stay - 1), 2)
-        else round(room_revenue_pre_gst / length_of_stay, 2)
-    end as night_room_revenue_pre_gst,
-    case
-        when night_index + 1 = length_of_stay
-            then round(services_revenue - round(services_revenue / length_of_stay, 2) * (length_of_stay - 1), 2)
-        else round(services_revenue / length_of_stay, 2)
-    end as night_services_revenue,
-    case
-        when night_index + 1 = length_of_stay
-            then round(room_taxes - round(room_taxes / length_of_stay, 2) * (length_of_stay - 1), 2)
-        else round(room_taxes / length_of_stay, 2)
-    end as night_room_taxes
-from exploded
+    *,
+    -- Component breakdown of channel distribution costs and net settlement revenue
+    round(night_room_revenue_pre_gst * base_commission_pct, 2) as base_ota_commission_cost,
+    round(night_room_revenue_pre_gst * base_commission_pct * gst_on_commission_pct, 2) as gst_on_commission_cost,
+    round(night_room_revenue_pre_gst * tcs_tds_pct, 2) as tds_tcs_withheld,
+    round(night_room_revenue_pre_gst * effective_distribution_cost_pct, 2) as estimated_distribution_cost,
+    round(night_room_revenue_pre_gst * (1.0 - effective_distribution_cost_pct), 2) as net_room_revenue_after_ota
+from allocated

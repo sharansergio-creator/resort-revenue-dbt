@@ -114,7 +114,8 @@ def main(as_of_date: str = DEFAULT_AS_OF_DATE) -> None:
         "future_otb_room_revenue", "cancelled_room_revenue_lost",
         "room_revenue_pre_gst", "services_revenue", "room_taxes",
         "room_discount", "total_refunds", "estimated_distribution_cost",
-        "net_room_revenue_after_ota", "distribution_cost_inr"
+        "net_room_revenue_after_ota", "distribution_cost_inr",
+        "base_ota_commission_cost", "gst_on_commission_cost", "tds_tcs_withheld"
     ]
 
     for tbl in [

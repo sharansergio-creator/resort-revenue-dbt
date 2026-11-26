@@ -2,18 +2,22 @@
 
 models:
   - name: dim_date
+    description: "Daily calendar dimension spanning resort operating timeline with Coorg seasonality classifications."
     columns:
       - name: stay_date
         tests: [unique, not_null]
   - name: dim_channel
+    description: "Acquisition channel dimension classifying Direct vs. OTA channels with contractual rate parameters."
     columns:
       - name: channel_name
         tests: [unique, not_null]
   - name: dim_room_type
+    description: "Room category dimension mapping physical luxury inventory to standardized reporting categories."
     columns:
       - name: room_type
         tests: [unique, not_null]
   - name: fct_daily_property_kpi
+    description: "Property-level daily performance mart tracking sellable rooms, occupancy, RevPAR, and ADR."
     columns:
       - name: stay_date
         tests:
@@ -23,7 +27,25 @@ models:
               arguments:
                 to: ref('dim_date')
                 field: stay_date
+  - name: fct_daily_room_performance
+    description: "Room-type daily performance mart tracking occupancy and revenue distribution across room categories."
+    columns:
+      - name: stay_date
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: stay_date
+      - name: room_type
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_room_type')
+                field: room_type
   - name: fct_booking_lifecycle
+    description: "Unique reservation grain mart tracking lead time buckets, cancellation propensity, and contract status."
     columns:
       - name: booking_key
         tests: [unique, not_null]
@@ -32,3 +54,25 @@ models:
           - accepted_values:
               arguments:
                 values: ['REALIZED', 'FUTURE_OTB', 'CANCELLED', 'OTHER']
+  - name: fct_channel_economics
+    description: "Monthly channel economics mart measuring acquisition share, net settlement yield, and distribution deductions."
+    columns:
+      - name: channel_name
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_channel')
+                field: channel_name
+      - name: base_ota_commission_cost
+        description: "Pure contractual commission expense (15% to 18%) charged by OTA portals."
+      - name: gst_on_commission_cost
+        description: "18% GST levied on contractual OTA commissions (eligible for Input Tax Credit / ITC where outward hospitality supplies are taxable)."
+      - name: tds_tcs_withheld
+        description: "Statutory tax withholdings (1% TDS under Section 194-O / TCS under Section 52 of CGST Act) withheld at source against resort tax liabilities."
+      - name: distribution_cost_inr
+        description: "Total estimated settlement deduction combining contractual commission, GST on commission, and statutory TDS/TCS."
+      - name: estimated_distribution_cost
+        description: "Alias for total estimated settlement deduction, ensuring compatibility with Power BI semantic models."
+      - name: net_room_revenue_after_ota
+        description: "Net cash settlement revenue after all estimated OTA deductions (Net Settlement Yield after Estimated Deductions)."

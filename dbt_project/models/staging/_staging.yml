@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: stg_bookings
+    description: "Normalized room-level reservation facts from StayFlexi PMS with defensive data quality filtering."
+    columns:
+      - name: room_booking_key
+        tests:
+          - unique
+          - not_null
+      - name: booking_key
+        tests:
+          - not_null
+      - name: room_seq
+        tests:
+          - not_null
+      - name: booking_total_rooms
+        tests:
+          - not_null
+      - name: check_in_date
+        tests:
+          - not_null
+      - name: check_out_date
+        tests:
+          - not_null
+      - name: length_of_stay
+        tests:
+          - not_null
+      - name: channel_name
+        tests:
+          - not_null
+      - name: booking_status_group
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['REALIZED', 'FUTURE_OTB', 'CANCELLED', 'OTHER']
+
+  - name: stg_daily_inventory
+    description: "Daily physical and sellable room inventory facts from StayFlexi PMS."
+    columns:
+      - name: stay_date
+        tests:
+          - unique
+          - not_null
+      - name: total_physical_rooms
+        tests:
+          - not_null
+      - name: net_sellable_rooms
+        tests:
+          - not_null
+      - name: pms_sold_rooms
+        tests:
+          - not_null

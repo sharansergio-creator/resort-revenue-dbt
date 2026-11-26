@@ -8,6 +8,8 @@ data/processed_private/
 *.duckdb.wal
 *.xlsx
 *.xls
+!data/demo_sample/*.xlsx
+!data/demo_sample/*.xls
 
 # dbt artifacts
 dbt_project/target/
